@@ -5,13 +5,13 @@ const { sendMessage } = require('../handles/sendMessage');
 module.exports = {
   name: 'help',
   description: 'Show available commands',
-  role: 1,
-  author: 'heru',
+  author: '𝐌𝐀𝐑𝐉𝐇𝐔𝐍 𝐁𝐀𝐘𝐋𝐎𝐍',
+  
   execute(senderId, args, pageAccessToken) {
     const commandsDir = path.join(__dirname, '../commands');
     const commandFiles = fs.readdirSync(commandsDir).filter(file => file.endsWith('.js'));
 
-    const commands = commandFiles.map((file, index) => {
+    const commands = commandFiles.map((file) => {
       const command = require(path.join(commandsDir, file));
       return {
         title: command.name,
@@ -30,11 +30,8 @@ module.exports = {
     }
 
     if (args[0] && args[0].toLowerCase() === 'all') {
-      const helpTextMessage = `🌟 Command List:\n📕 All Commands: ${totalCommands}\n\n${commands.map((cmd, index) => `${index + 1}. ${cmd.title} - ${cmd.description}`).join('\n')}`;
-
-      return sendMessage(senderId, {
-        text: helpTextMessage
-      }, pageAccessToken);
+      const helpTextMessage = `𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒 𝐋𝐈𝐒𝐓\n━━━━━━━━━━━━━━━━━\n📕 𝐀𝐥𝐥 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬: ${totalCommands}\n\n${commands.map((cmd, index) => `➯ 《 ${cmd.title} 》 - ${cmd.description}`).join('\n')}\n\n🛠️ 𝐂𝐫𝐞𝐝𝐢𝐭𝐬: 𝙼𝚊𝚛𝚓𝚑𝚞𝚗 𝙱𝚊𝚢𝚕𝚘𝚗`;
+      return sendMessage(senderId, { text: helpTextMessage }, pageAccessToken);
     }
 
     const startIndex = (page - 1) * commandsPerPage;
@@ -45,7 +42,7 @@ module.exports = {
       return sendMessage(senderId, { text: `Invalid page number. There are only ${totalPages} pages.` }, pageAccessToken);
     }
 
-    const helpTextMessage = `🌟 Command List (Page ${page} of ${totalPages}):\n📕 All Commands: ${totalCommands}\n\n${commandsForPage.map((cmd, index) => `${startIndex + index + 1}. ${cmd.title} - ${cmd.description}`).join('\n\n')}\n\nType "help [page]" to see another page, or "help all" to show all commands.`;
+    const helpTextMessage = `𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒 𝐋𝐈𝐒𝐓 (𝐏𝐚𝐠𝐞 ${page} 𝐨𝐟 ${totalPages})\n━━━━━━━━━━━━━━━━━\n📕 𝐀𝐥𝐥 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬: ${totalCommands}\n\n${commandsForPage.map((cmd, index) => `➯ 《 ${cmd.title} 》 - ${cmd.description}`).join('\n\n')}\n\nType "help [page]" to see another page, or "help all" to show all commands.\n\n🛠️ 𝐂𝐫𝐞𝐝𝐢𝐭𝐬: 𝙼𝚊𝚛𝚓𝚑𝚞𝚗 𝙱𝚊𝚢𝚕𝚘𝚗`;
 
     const quickRepliesPage = commandsForPage.map((cmd) => ({
       content_type: "text",
