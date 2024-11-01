@@ -8,7 +8,7 @@ module.exports = {
   async execute(senderId, args, pageAccessToken, sendMessage) {
     const prompt = args.join(' ');
     try {
-      const apiUrl = `https://zcdsphapi.marjhun.fun/toshia?prompt=${encodeURIComponent(prompt)}`;
+      const apiUrl = `https://zcdsphapidashboard.vercel.app/toshia?prompt=${encodeURIComponent(prompt)}`;
       const response = await axios.get(apiUrl);
       const text = response.data.response;
 
