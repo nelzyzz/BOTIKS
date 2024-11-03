@@ -2,155 +2,114 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const { sendMessage } = require('./sendMessage');
+const config = require('../config.json');
 
 const commands = new Map();
-const lastImageByUser = new Map();
-const lastVideoByUser = new Map();
+const prefix = '';
 
 const commandFiles = fs.readdirSync(path.join(__dirname, '../commands')).filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
   const command = require(`../commands/${file}`);
-  if (command.name && typeof command.name === 'string') {
-    commands.set(command.name.toLowerCase(), command);
-  }
+  commands.set(command.name.toLowerCase(), command);
+  console.log(`Loaded command: ${command.name}`);
 }
 
-const tiktokRegex = /https?:\/\/(www\.)?tiktok\.com\/[^\s/?#]+\/?|https?:\/\/vt\.tiktok\.com\/[^\s/?#]+\/?/;
-
 async function handleMessage(event, pageAccessToken) {
-  if (!event || !event.sender || !event.sender.id) return;
+  if (!event?.sender?.id) {
+    console.error('Invalid event object: Missing sender ID.');
+    return;
+  }
 
   const senderId = event.sender.id;
 
-  if (event.message && event.message.attachments) {
-    const imageAttachment = event.message.attachments.find(att => att.type === 'image');
-    const videoAttachment = event.message.attachments.find(att => att.type === 'video');
+  if (event.message?.text) {
+    const messageText = event.message.text.trim();
+    console.log(`Received message: ${messageText}`);
 
-    if (imageAttachment) {
-      lastImageByUser.set(senderId, imageAttachment.payload.url);
-    }
-    if (videoAttachment) {
-      lastVideoByUser.set(senderId, videoAttachment.payload.url);
-    }
-  }
+    const words = messageText.split(' ');
+    const commandName = words.shift().toLowerCase();
+    const args = words;
 
-  if (event.message && event.message.text) {
-    const messageText = event.message.text.trim().toLowerCase();
-
-    if (tiktokRegex.test(messageText)) {
-      await sendMessage(senderId, { text: 'Downloading your TikTok video, please wait...' }, pageAccessToken);
-      try {
-        const apiUrl = `https://ccprojectapis.ddns.net/api/tikdl?url=${encodeURIComponent(messageText)}`;
-        const response = await axios.get(apiUrl);
-        
-        if (response.data && response.data.video_url) {
-          const shotiUrl = response.data.video_url;
-
-          await sendMessage(senderId, {
-            attachment: {
-              type: 'video',
-              payload: {
-                url: shotiUrl,
-                is_reusable: true
-              }
-            }
-          }, pageAccessToken);
-        } else {
-          console.error("Unexpected response structure:", response.data);
-          await sendMessage(senderId, { 
-            text: 'Failed to retrieve TikTok video URL. The video might not be available or the URL is incorrect. Please check the URL and try again.' 
-          }, pageAccessToken);
-        }
-      } catch (error) {
-        console.error("Error fetching TikTok video:", error.response ? error.response.data : error.message);
-        await sendMessage(senderId, { 
-          text: 'An error occurred while downloading the TikTok video. Please ensure the URL is correct and try again later.' 
-        }, pageAccessToken);
-      }
-      return;
-    }
-
-    if (messageText === 'removebg') {
-      const lastImage = lastImageByUser.get(senderId);
-
-      if (lastImage) {
-        try {
-          await commands.get('removebg').execute(senderId, [], pageAccessToken, lastImage);
-          lastImageByUser.delete(senderId);
-        } catch (error) {
-          await sendMessage(senderId, { text: 'An error occurred while processing the image.' }, pageAccessToken);
-        }
-      } else {
-        await sendMessage(senderId, {
-          text: 'Please send an image first, then type "removebg" to remove its background.'
-        }, pageAccessToken);
-      }
-      return;
-    }
-
-    if (messageText === 'imgur') {
-      const lastImage = lastImageByUser.get(senderId);
-      const lastVideo = lastVideoByUser.get(senderId);
-      const mediaToUpload = lastImage || lastVideo;
-
-      if (mediaToUpload) {
-        try {
-          await commands.get('imgur').execute(senderId, [], pageAccessToken, mediaToUpload);
-          lastImageByUser.delete(senderId);
-          lastVideoByUser.delete(senderId);
-        } catch (error) {
-          await sendMessage(senderId, { text: 'An error occurred while uploading the media to Imgur.' }, pageAccessToken);
-        }
-      } else {
-        await sendMessage(senderId, { text: 'Please send an image or video first, then type "imgur" to upload.' }, pageAccessToken);
-      }
-      return;
-    }
-
-    if (messageText.startsWith('gemini')) {
-      const lastImage = lastImageByUser.get(senderId);
-      const args = messageText.split(/\s+/).slice(1);
-
-      try {
-        await commands.get('gemini').execute(senderId, args, pageAccessToken, event, lastImage);
-        lastImageByUser.delete(senderId);
-      } catch (error) {
-        await sendMessage(senderId, { text: 'An error occurred while processing the Gemini command.' }, pageAccessToken);
-      }
-      return;
-    }
-
-    let commandName, args;
-    if (messageText.startsWith('-')) {
-      const argsArray = messageText.slice(1).trim().split(/\s+/);
-      commandName = argsArray.shift().toLowerCase();
-      args = argsArray;
-    } else {
-      const words = messageText.trim().split(/\s+/);
-      commandName = words.shift().toLowerCase();
-      args = words;
-    }
+    console.log(`Parsed command: ${commandName} with arguments: ${args}`);
 
     if (commands.has(commandName)) {
       const command = commands.get(commandName);
+
+      if (command.role === 0 && !config.adminId.includes(senderId)) {
+        sendMessage(senderId, { text: 'You are not authorized to use this command.' }, pageAccessToken);
+        return;
+      }
+
       try {
-        await command.execute(senderId, args, pageAccessToken, event);
+        let imageUrl = '';
+
+        if (event.message?.reply_to?.mid) {
+          try {
+            imageUrl = await getAttachments(event.message.reply_to.mid, pageAccessToken);
+          } catch (error) {
+            console.error("Failed to get attachment:", error);
+            imageUrl = '';
+          }
+        } else if (event.message?.attachments?.[0]?.type === 'image') {
+          imageUrl = event.message.attachments[0].payload.url;
+        }
+
+        await command.execute(senderId, args, pageAccessToken, event, imageUrl);
       } catch (error) {
-        sendMessage(senderId, { text: `There was an error executing the command "${commandName}". Please try again later.` }, pageAccessToken);
+        if (commandName === 'ai') {
+          sendMessage(senderId, { text: "hello 👋🏻 how can I assist you today??\n\nNote: Dont use ai instead question directly, thank you!! 🤗" }, pageAccessToken);
+        } else {
+          console.error(`Error executing command "${commandName}":`, error);
+          sendMessage(senderId, { text: 'There was an error executing that command.' }, pageAccessToken);
+        }
       }
     } else {
-      sendMessage(senderId, {
-        text: `Unknown command: "${commandName}". Type "help" for a list of available commands.`,
-        quick_replies: [
-          {
-            content_type: "text",
-            title: "Help",
-            payload: "HELP_PAYLOAD"
-          }
-        ]
-      }, pageAccessToken);
+      if (commands.has('ai')) {
+        try {
+          await commands.get('ai').execute(senderId, [commandName, ...args], pageAccessToken, sendMessage);
+        } catch (error) {
+          sendMessage(senderId, { text: "hello 👋🏻 how can I assist you today??\n\nNote: Dont use ai instead question directly, thank you!! 🤗" }, pageAccessToken);
+        }
+      } else {
+        sendMessage(senderId, {
+          text: `Unknown command: "${commandName}". Type "help" or click help below for a list of available commands.`,
+          quick_replies: [
+            {
+              content_type: "text",
+              title: "Help",
+              payload: "HELP_PAYLOAD"
+            }
+          ]
+        }, pageAccessToken);
+      }
     }
+  } else {
+    console.error('Message or text is not present in the event.');
+  }
+}
+
+async function getAttachments(mid, pageAccessToken) {
+  if (!mid) {
+    console.error("No message ID provided for getAttachments.");
+    throw new Error("No message ID provided.");
+  }
+
+  try {
+    const { data } = await axios.get(`https://graph.facebook.com/v21.0/${mid}/attachments`, {
+      params: { access_token: pageAccessToken }
+    });
+
+    if (data?.data?.length > 0 && data.data[0].image_data) {
+      return data.data[0].image_data.url;
+    } else {
+      console.error("No image found in the replied message.");
+      throw new Error("No image found in the replied message.");
+    }
+  } catch (error) {
+    console.error("Error fetching attachments:", error);
+    throw new Error("Failed to fetch attachments.");
   }
 }
 
 module.exports = { handleMessage };
+  
