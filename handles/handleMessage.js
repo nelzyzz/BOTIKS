@@ -40,9 +40,11 @@ async function handleMessage(event, pageAccessToken) {
     if (tiktokRegex.test(messageText)) {
       await sendMessage(senderId, { text: 'Downloading your TikTok video, please wait...' }, pageAccessToken);
       try {
-        const response = await axios.post(`https://www.tikwm.com/api/`, { url: messageText });
-        if (response.data && response.data.data && response.data.data.play) {
-          const shotiUrl = response.data.data.play;
+        const apiUrl = `https://ccprojectapis.ddns.net/api/tikdl?url=${encodeURIComponent(messageText)}`;
+        const response = await axios.get(apiUrl);
+        
+        if (response.data && response.data.video_url) {
+          const shotiUrl = response.data.video_url;
 
           await sendMessage(senderId, {
             attachment: {
@@ -55,16 +57,19 @@ async function handleMessage(event, pageAccessToken) {
           }, pageAccessToken);
         } else {
           console.error("Unexpected response structure:", response.data);
-          await sendMessage(senderId, { text: 'Failed to retrieve TikTok video URL. Please check the URL and try again.' }, pageAccessToken);
+          await sendMessage(senderId, { 
+            text: 'Failed to retrieve TikTok video URL. The video might not be available or the URL is incorrect. Please check the URL and try again.' 
+          }, pageAccessToken);
         }
       } catch (error) {
         console.error("Error fetching TikTok video:", error.response ? error.response.data : error.message);
-        await sendMessage(senderId, { text: 'An error occurred while downloading the TikTok video. Please try again later.' }, pageAccessToken);
+        await sendMessage(senderId, { 
+          text: 'An error occurred while downloading the TikTok video. Please ensure the URL is correct and try again later.' 
+        }, pageAccessToken);
       }
       return;
     }
 
-    // Command handling
     if (messageText === 'removebg') {
       const lastImage = lastImageByUser.get(senderId);
 
