@@ -9,6 +9,15 @@ async function typingIndicator(senderId, pageAccessToken) {
     }, {
       params: { access_token: pageAccessToken },
     });
+
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
+
+    await axios.post(`https://graph.facebook.com/v13.0/me/messages`, {
+      recipient: { id: senderId },
+      sender_action: 'typing_off',
+    }, {
+      params: { access_token: pageAccessToken },
+    });
   } catch (error) {
     console.error('Error sending typing indicator:', error.message);
   }
@@ -55,4 +64,4 @@ function sendMessage(senderId, message, pageAccessToken) {
   });
 }
 
-module.exports = { sendMessage };
+module.exports = { sendMessage, typingIndicator };
