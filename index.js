@@ -1,20 +1,59 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
 const { handleMessage } = require('./handles/handleMessage');
 const { handlePostback } = require('./handles/handlePostback');
-const { sendMessage } = require('./handles/sendMessage');
-const { exec, spawn } = require("child_process");
+const config = require('./config.json');
 
 const app = express();
 app.use(bodyParser.json());
 
+const colors = {
+  blue: '\x1b[34m',
+  red: '\x1b[31m',
+  reset: '\x1b[0m'
+};
+
 const VERIFY_TOKEN = 'pagebot';
-const PAGE_ACCESS_TOKEN = fs.readFileSync('token.txt', 'utf8').trim();
-const SCRIPT_FILE = "index.js";
-const SCRIPT_PATH = __dirname + "/" + SCRIPT_FILE;
-const RESTART_FILE = './restart.json';
-const GIT_REPO = "https://github.com/ZCODES21/BOTIKS.git";
+
+app.use(express.static(path.join(__dirname, 'Music')));
+
+const loadMenuCommands = async () => {
+  try {
+    const commandsDir = path.join(__dirname, 'commands');
+    const commandFiles = fs.readdirSync(commandsDir).filter(file => file.endsWith('.js'));
+
+    const commandsList = commandFiles.map(file => {
+      const command = require(path.join(commandsDir, file));
+      return { name: command.name, description: command.description || 'No description available' };
+    });
+
+    const loadCmd = await axios.post(`https://graph.facebook.com/v21.0/me/messenger_profile?access_token=${config.pageAccessToken}`, {
+      commands: [
+        {
+          locale: "default",
+          commands: commandsList
+        }
+      ]
+    }, {
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+
+    if (loadCmd.data.result === "success") {
+      console.log("Commands loaded!");
+    } else {
+      console.log("Failed to load commands");
+    }
+  } catch (error) {
+    console.error('Error loading commands:', error);
+  }
+};
+
+loadMenuCommands();
 
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
@@ -23,6 +62,7 @@ app.get('/webhook', (req, res) => {
 
   if (mode && token) {
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+      console.log('WEBHOOK_VERIFIED');
       res.status(200).send(challenge);
     } else {
       res.sendStatus(403);
@@ -37,72 +77,41 @@ app.post('/webhook', (req, res) => {
     body.entry.forEach(entry => {
       entry.messaging.forEach(event => {
         if (event.message) {
-          handleMessage(event, PAGE_ACCESS_TOKEN);
+          handleMessage(event, config.pageAccessToken);
         } else if (event.postback) {
-          handlePostback(event, PAGE_ACCESS_TOKEN);
+          handlePostback(event, config.pageAccessToken);
         }
       });
     });
+
     res.status(200).send('EVENT_RECEIVED');
   } else {
     res.sendStatus(404);
   }
 });
 
-function executeCommand(command) {
-  return new Promise((resolve, reject) => {
-    exec(command, { cwd: __dirname, shell: true }, (error, stdout, stderr) => {
-      if (error) {
-        return reject(error);
-      }
-      resolve(stdout);
-    });
-  });
-}
-
-async function loadBot() {
-  try {
-    await executeCommand(`git pull ${GIT_REPO} main --ff-only`);
-  } catch (error) {
-    console.error("Failed to update code from the repository. Proceeding without update.");
-  }
-
-  const executeBot = (cmd, args) => {
-    return new Promise((resolve) => {
-      let process_ = spawn(cmd, args, {
-        cwd: __dirname,
-        stdio: "inherit",
-        shell: true,
-      });
-
-      process_.on("close", (exitCode) => {
-        if (exitCode === 1) {
-          loadBot();
-        } else {
-          console.log(`Bot stopped with code ${exitCode}`);
-        }
-        resolve();
-      });
-    });
+function logTime() {
+  const options = {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
   };
 
-  if (fs.existsSync(RESTART_FILE) && fs.statSync(RESTART_FILE).size > 0) {
-    try {
-      const restartData = JSON.parse(fs.readFileSync(RESTART_FILE, 'utf8'));
-      const adminId = restartData.restartId;
-      const restartTime = new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
-      sendMessage(adminId, { text: `Successfully restarted the bot. Time: ${restartTime}` }, PAGE_ACCESS_TOKEN);
-      fs.unlinkSync(RESTART_FILE);
-    } catch (error) {
-      console.error("Error parsing restart file:", error);
-    }
-  }
-
-  executeBot("node", [SCRIPT_PATH]).catch(console.error);
+  const currentTime = new Date().toLocaleString('en-PH', options);
+  const logMessage = `Current time (PH): ${currentTime}\n`;
+  console.log(logMessage);
 }
+
+logTime();
+setInterval(logTime, 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  loadBot();
+  console.log(`${colors.red} Bot Owner: ${config.owner}`);
 });
+                                     
