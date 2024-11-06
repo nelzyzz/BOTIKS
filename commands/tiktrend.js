@@ -8,7 +8,7 @@ module.exports = {
 
   async execute(senderId, args, pageAccessToken) {
     try {
-      const pogi = await sendMessage(senderId, { text: "⏱️ | Fetching a trending TikTok video..." }, pageAccessToken);
+      const pogi = await sendMessage(senderId, { text: "⏱️ | FETCHING" }, pageAccessToken);
 
       const response = await axios.get("https://ccexplorerapisjonell.vercel.app/api/tiktrend");
       const videos = response.data.data;
@@ -24,7 +24,7 @@ module.exports = {
       const duration = chilli.duration;
       const authorName = chilli.author.nickname;
 
-      const messageBody = `🎥 Trending TikTok Video\n\n`
+      const messageBody = `🎥 | HERE IS THE RESULTS\n\n`
                         + `Title: ${title}\n`
                         + `Duration: ${duration} seconds\n`
                         + `Author: ${authorName}\n`
