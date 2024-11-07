@@ -30,7 +30,7 @@ module.exports = {
     }
 
     if (args[0] && args[0].toLowerCase() === 'all') {
-      const helpTextMessage = `𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒 𝐋𝐈𝐒𝐓\n━━━━━━━━━━━━━━━━━\n📕 𝐀𝐥𝐥 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬: ${totalCommands}\n\n${commands.map((cmd, index) => `➯ 《 ${cmd.title} 》 - ${cmd.description}`).join('\n')}\n\n🛠️ 𝐂𝐫𝐞𝐝𝐢𝐭𝐬: 𝙼𝚊𝚛𝚓𝚑𝚞𝚗 𝙱𝚊𝚢𝚕𝚘𝚗`;
+      const helpTextMessage = `𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒 𝐋𝐈𝐒𝐓\n━━━━━━━━━━━━━━━━━\n📕 𝐀𝐥𝐥 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬: ${totalCommands}\n\n${commands.map((cmd, index) => `➯ 《 ${cmd.title} 》 - ${cmd.author}`).join('\n')}\n\n🛠️ 𝐂𝐫𝐞𝐝𝐢𝐭𝐬: 𝙼𝚊𝚛𝚓𝚑𝚞𝚗 𝙱𝚊𝚢𝚕𝚘𝚗`;
       return sendMessage(senderId, { text: helpTextMessage }, pageAccessToken);
     }
 
