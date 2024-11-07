@@ -42,7 +42,7 @@ module.exports = {
       return sendMessage(senderId, { text: `Invalid page number. There are only ${totalPages} pages.` }, pageAccessToken);
     }
 
-    const helpTextMessage = `𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒 𝐋𝐈𝐒𝐓 (𝐏𝐚𝐠𝐞 ${page} 𝐨𝐟 ${totalPages})\n━━━━━━━━━━━━━━━━━\n📕 𝐀𝐥𝐥 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬: ${totalCommands}\n\n${commandsForPage.map((cmd, index) => `➯ 《 ${cmd.title} 》 - ${cmd.description}`).join('\n\n')}\n\nType "help [page]" to see another page, or "help all" to show all commands.\n\n🛠️ 𝐂𝐫𝐞𝐝𝐢𝐭𝐬: 𝙼𝚊𝚛𝚓𝚑𝚞𝚗 𝙱𝚊𝚢𝚕𝚘𝚗`;
+    const helpTextMessage = `𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒 𝐋𝐈𝐒𝐓 \n━━━━━━━━━━━━━━━━━\n📕 𝐀𝐥𝐥 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬: ${totalCommands}\n\n${commandsForPage.map((cmd, index) => `➯ 《 ${cmd.title} 》 - ${cmd.description}`).join('\n\n')}\n\nType "help [page]" to see another page, or "help all" to show all commands.\n(𝐏𝐚𝐠𝐞 ${page} 𝐨𝐟 ${totalPages})\n\n🛠️ 𝐂𝐫𝐞𝐝𝐢𝐭𝐬: 𝙼𝚊𝚛𝚓𝚑𝚞𝚗 𝙱𝚊𝚢𝚕𝚘𝚗`;
 
     const quickRepliesPage = commandsForPage.map((cmd) => ({
       content_type: "text",
